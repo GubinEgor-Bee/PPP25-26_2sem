@@ -1,9 +1,9 @@
 class Move:
-    def __init__(self, start_row, start_col, end_row, end_col):
-        self.start_row = start_row
-        self.start_col = start_col
-        self.end_row = end_row
-        self.end_col = end_col
+    def __init__(self, sr, sc, er, ec):
+        self.start_row = sr
+        self.start_col = sc
+        self.end_row = er
+        self.end_col = ec
 
 
 class Piece:
@@ -19,51 +19,9 @@ class Piece:
     def valid_moves(self, board, row, col):
         return []
 
-
-class Pawn(Piece):
-    def symbol(self):
-        return "P" if self._color == "white" else "p"
-
-    def valid_moves(self, board, row, col):
-        moves = []
-        direction = -1 if self._color == "white" else 1
-
-        if board.is_empty(row + direction, col):
-            moves.append((row + direction, col))
-
-            start_row = 6 if self._color == "white" else 1
-            if row == start_row and board.is_empty(row + 2 * direction, col):
-                moves.append((row + 2 * direction, col))
-
-        for dc in [-1, 1]:
-            r = row + direction
-            c = col + dc
-
-            if board.in_bounds(r, c):
-                piece = board.get_piece(r, c)
-
-                if piece and piece.get_color() != self._color:
-                    moves.append((r, c))
-
-                # EN PASSANT
-                if (r, c) == board.en_passant_target:
-                    moves.append((r, c))
-
-        return moves
-
-
-# ---------------- КЛАССИЧЕСКИЕ ФИГУРЫ ----------------
-
-
-class Rook(Piece):
-    def symbol(self):
-        return "R" if self._color == "white" else "r"
-
-    def valid_moves(self, board, row, col):
+    def slide_moves(self, board, row, col, directions):
 
         moves = []
-
-        directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 
         for dr, dc in directions:
             r = row + dr
@@ -84,16 +42,9 @@ class Rook(Piece):
 
         return moves
 
-
-class Knight(Piece):
-    def symbol(self):
-        return "N" if self._color == "white" else "n"
-
-    def valid_moves(self, board, row, col):
+    def jump_moves(self, board, row, col, steps):
 
         moves = []
-
-        steps = [(2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)]
 
         for dr, dc in steps:
             r = row + dr
@@ -109,33 +60,60 @@ class Knight(Piece):
         return moves
 
 
+class Pawn(Piece):
+    def symbol(self):
+        return "P" if self._color == "white" else "p"
+
+    def valid_moves(self, board, row, col):
+
+        moves = []
+
+        direction = -1 if self._color == "white" else 1
+
+        if board.is_empty(row + direction, col):
+            moves.append((row + direction, col))
+
+            start = 6 if self._color == "white" else 1
+
+            if row == start and board.is_empty(row + 2 * direction, col):
+                moves.append((row + 2 * direction, col))
+
+        for dc in [-1, 1]:
+            r = row + direction
+            c = col + dc
+
+            if board.in_bounds(r, c):
+                piece = board.get_piece(r, c)
+
+                if piece and piece.get_color() != self._color:
+                    moves.append((r, c))
+
+                if (r, c) == board.en_passant_target:
+                    moves.append((r, c))
+
+        return moves
+
+
+class Rook(Piece):
+    def symbol(self):
+        return "R" if self._color == "white" else "r"
+
+    def valid_moves(self, board, row, col):
+
+        dirs = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+
+        return self.slide_moves(board, row, col, dirs)
+
+
 class Bishop(Piece):
     def symbol(self):
         return "B" if self._color == "white" else "b"
 
     def valid_moves(self, board, row, col):
 
-        moves = []
         dirs = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
 
-        for dr, dc in dirs:
-            r = row + dr
-            c = col + dc
-
-            while board.in_bounds(r, c):
-                if board.is_empty(r, c):
-                    moves.append((r, c))
-
-                else:
-                    if board.get_piece(r, c).get_color() != self._color:
-                        moves.append((r, c))
-
-                    break
-
-                r += dr
-                c += dc
-
-        return moves
+        return self.slide_moves(board, row, col, dirs)
 
 
 class Queen(Piece):
@@ -144,27 +122,20 @@ class Queen(Piece):
 
     def valid_moves(self, board, row, col):
 
-        moves = []
         dirs = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]
 
-        for dr, dc in dirs:
-            r = row + dr
-            c = col + dc
+        return self.slide_moves(board, row, col, dirs)
 
-            while board.in_bounds(r, c):
-                if board.is_empty(r, c):
-                    moves.append((r, c))
 
-                else:
-                    if board.get_piece(r, c).get_color() != self._color:
-                        moves.append((r, c))
+class Knight(Piece):
+    def symbol(self):
+        return "N" if self._color == "white" else "n"
 
-                    break
+    def valid_moves(self, board, row, col):
 
-                r += dr
-                c += dc
+        steps = [(2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)]
 
-        return moves
+        return self.jump_moves(board, row, col, steps)
 
 
 class King(Piece):
@@ -173,58 +144,34 @@ class King(Piece):
 
     def valid_moves(self, board, row, col):
 
-        moves = []
-        dirs = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]
+        steps = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]
 
-        for dr, dc in dirs:
-            r = row + dr
-            c = col + dc
-
-            if board.in_bounds(r, c):
-                if (
-                    board.is_empty(r, c)
-                    or board.get_piece(r, c).get_color() != self._color
-                ):
-                    moves.append((r, c))
-
-        return moves
-
-
-# ---------------- НОВЫЕ ФИГУРЫ ----------------
+        return self.jump_moves(board, row, col, steps)
 
 
 class FirstNewFigure(Piece):
-    """Нечетный ферзь."""
-
     def symbol(self):
         return "O" if self._color == "white" else "o"
 
     def valid_moves(self, board, row, col):
 
+        dirs = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]
+
         moves = []
 
-        directions = [
-            (1,0),(-1,0),(0,1),(0,-1),
-            (1,1),(1,-1),(-1,1),(-1,-1)
-        ]
-
-        for dr, dc in directions:
-
+        for dr, dc in dirs:
             r = row + dr
             c = col + dc
             step = 1
 
             while board.in_bounds(r, c):
-
-                if step % 2 == 1:   # только нечётные клетки
-
+                if step % 2 == 1:
                     if board.is_empty(r, c):
                         moves.append((r, c))
                     else:
                         if board.get_piece(r, c).get_color() != self._color:
                             moves.append((r, c))
                         break
-
                 else:
                     if not board.is_empty(r, c):
                         break
@@ -237,7 +184,6 @@ class FirstNewFigure(Piece):
 
 
 class SecondNewFigure(Piece):
-    """Слон + конь"""
     def symbol(self):
         return "A" if self._color == "white" else "a"
 
@@ -249,8 +195,6 @@ class SecondNewFigure(Piece):
 
 
 class ThirdNewFigure(Piece):
-    """Король но в радиусе 2."""
-
     def symbol(self):
         return "E" if self._color == "white" else "e"
 
@@ -260,7 +204,6 @@ class ThirdNewFigure(Piece):
 
         for dr in range(-2, 3):
             for dc in range(-2, 3):
-
                 if dr == 0 and dc == 0:
                     continue
 
@@ -268,20 +211,30 @@ class ThirdNewFigure(Piece):
                 c = col + dc
 
                 if board.in_bounds(r, c):
-
-                    if board.is_empty(r, c) or board.get_piece(r,c).get_color()!=self._color:
-                        moves.append((r,c))
+                    if (
+                        board.is_empty(r, c)
+                        or board.get_piece(r, c).get_color() != self._color
+                    ):
+                        moves.append((r, c))
 
         return moves
+
+
+class MoveRecord:
+    def __init__(self, move, piece, captured, player, enpass):
+
+        self.move = move
+        self.moved_piece = piece
+        self.captured_piece = captured
+        self.player_color = player
+        self.en_passant = enpass
 
 
 class Board:
     def __init__(self):
 
-        self._board = [[None for _ in range(8)] for _ in range(8)]
-
+        self._board = [[None] * 8 for _ in range(8)]
         self._history = []
-
         self.en_passant_target = None
 
         self.setup()
@@ -327,16 +280,15 @@ class Board:
         return self._board[r][c] is None
 
     def get_piece(self, r, c):
-
         return self._board[r][c]
 
     def find_king(self, color):
 
         for r in range(8):
             for c in range(8):
-                piece = self.get_piece(r, c)
+                p = self.get_piece(r, c)
 
-                if piece and isinstance(piece, King) and piece.get_color() == color:
+                if p and isinstance(p, King) and p.get_color() == color:
                     return (r, c)
 
         return None
@@ -347,10 +299,10 @@ class Board:
 
         for r in range(8):
             for c in range(8):
-                piece = self.get_piece(r, c)
+                p = self.get_piece(r, c)
 
-                if piece and piece.get_color() == enemy:
-                    if isinstance(piece, Pawn):
+                if p and p.get_color() == enemy:
+                    if isinstance(p, Pawn):
                         direction = -1 if enemy == "white" else 1
 
                         for dc in [-1, 1]:
@@ -361,7 +313,7 @@ class Board:
                                 attacked.append((rr, cc))
 
                     else:
-                        attacked.extend(piece.valid_moves(self, r, c))
+                        attacked.extend(p.valid_moves(self, r, c))
 
         return attacked
 
@@ -386,15 +338,15 @@ class Board:
 
         for r in range(8):
             for c in range(8):
-                piece = self.get_piece(r, c)
+                p = self.get_piece(r, c)
 
-                if piece and piece.get_color() == color:
+                if p and p.get_color() == color:
                     if (r, c) in attacked:
                         danger.append((r, c))
 
         return danger
 
-    def move(self, move, player_color):
+    def move(self, move, player):
 
         piece = self._board[move.start_row][move.start_col]
 
@@ -408,7 +360,6 @@ class Board:
 
         captured = self._board[move.end_row][move.end_col]
 
-        # EN PASSANT CAPTURE
         if (
             isinstance(piece, Pawn)
             and (move.end_row, move.end_col) == self.en_passant_target
@@ -420,24 +371,21 @@ class Board:
             self._board[move.end_row + direction][move.end_col] = None
 
         self._history.append(
-            MoveRecord(move, piece, captured, player_color, self.en_passant_target)
+            MoveRecord(move, piece, captured, player, self.en_passant_target)
         )
 
         self._board[move.end_row][move.end_col] = piece
         self._board[move.start_row][move.start_col] = None
 
-        # EN PASSANT SET
         self.en_passant_target = None
 
         if isinstance(piece, Pawn):
             if abs(move.start_row - move.end_row) == 2:
                 mid = (move.start_row + move.end_row) // 2
-
                 self.en_passant_target = (mid, move.start_col)
 
-        # PROMOTION
         if isinstance(piece, Pawn):
-            if move.end_row == 0 or move.end_row == 7:
+            if move.end_row in (0, 7):
                 self._board[move.end_row][move.end_col] = Queen(piece.get_color())
 
         if isinstance(captured, King):
@@ -494,16 +442,6 @@ class Board:
             print(row)
 
         print()
-
-
-class MoveRecord:
-    def __init__(self, move, moved_piece, captured_piece, player_color, en_passant):
-
-        self.move = move
-        self.moved_piece = moved_piece
-        self.captured_piece = captured_piece
-        self.player_color = player_color
-        self.en_passant = en_passant
 
 
 def main():
